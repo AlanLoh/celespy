@@ -17,7 +17,7 @@ except:
     USE_GEOPY = False
 
 __author__ = ['Alan Loh']
-__copyright__ = 'Copyright 2018, pystro'
+__copyright__ = 'Copyright 2018, celespy'
 __credits__ = ['Alan Loh']
 __license__ = 'MIT'
 __version__ = '0.0.1'

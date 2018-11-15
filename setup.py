@@ -1,15 +1,15 @@
 from setuptools import setup, find_packages
-import skypy
+import celespy
 
-setup(name       = 'skypy',
+setup(name       = 'celespy',
     packages     = find_packages(),
     include_package_data=True,
     install_requires=['astropy'],
     python_requires='>=3.5',
     scripts      = [],
-    version      = skypy.__version__,
+    version      = celespy.__version__,
     description  = 'NenuFAR Python package',
-    url          = 'https://github.com/AlanLoh/skypy.git',
+    url          = 'https://github.com/AlanLoh/celespy.git',
     author       = 'Alan Loh',
     author_email = 'alan.loh@obspm.fr',
     license      = 'MIT',
