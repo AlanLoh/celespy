@@ -5,6 +5,7 @@ import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib.dates as mdates
 from scipy.interpolate import interp1d
+import shutil
 
 from astropy.time import Time, TimeDelta
 from astropy import units as u
@@ -26,7 +27,8 @@ __email__ = 'alan.loh@obspm.fr'
 __status__ = 'WIP'
 __all__ = [ 'getLoc', 'getSrc', 'getAltaz', 'getTime',
             'getTransit', 'getSep', 'riseTime', 'setTime',
-            'meridianTime', 'plotElevation']
+            'meridianTime', 'plotElevation', 'plotElevations',
+            'plotSeparation']
 
 
 # =================================================================================== #
@@ -106,6 +108,8 @@ def getSrc(source, time=None, loc=None, unit='deg'):
         assert len(source)==2, 'Only length 2 tuple is understood.'
         if not unit.lower() == 'deg':
             ra, dec = np.degrees(source)
+        else:
+            ra, dec = source
         src = coord.SkyCoord(ra*u.deg, dec*u.deg, frame='icrs')
     elif isinstance(source, coord.SkyCoord):
         src = source
@@ -504,6 +508,125 @@ def plotElevation(source, time, loc, unit='deg', dt=1800):
     fig.autofmt_xdate()
     ax.legend()
     ax.set_xlabel('Time ({} UTC)'.format(t0))
-    ax.set_ylabel('Elevation')
+    ax.set_ylabel('Elevation (degrees)')
+    plt.show()
+
+
+# =================================================================================== #
+# ---------------------------------- plotElevations --------------------------------- #
+# =================================================================================== #
+def plotElevations(sources, time, loc, unit='deg', dt=1800):
+    """ Plot the source elevation for a day since `time`
+
+        Parameters
+        ----------
+        * **source** : str, tuple or ``astropy.coord.SkyCoord``
+            The astrophysical position/source to convert into Alt Az
+        * **time** : str, number or Time
+            The UTC time at which the conversion should be computed
+        * **loc** : str or tuple
+            The location at which the conversion should be computed
+        * **unit** : str, optional
+            If `source` is a tuple of ra/dec, unit can be either `'deg'` or `'rad'`
+        * **dt** : number, optional
+            Time interval for the elevation computation (seconds)
+    """
+    fig, ax = plt.subplots()
+    lname  = loc
+    tini = time
+    for source in sources:
+        time   = getTime(tini)
+        t0     = time.iso.split()[0].replace('-', '/') 
+        sname  = source
+        loc    = getLoc(loc)
+        source = getSrc(source=source, time=time, loc=loc, unit=unit)
+        
+        # Compute the elevation vs time
+        dt    = TimeDelta(dt, format='sec')
+        nvals = int((TimeDelta(1, format='jd')/dt).value)
+        times = np.zeros( nvals )
+        elev  = np.zeros( nvals )
+        for i in np.arange(nvals):
+            src = getAltaz(source=source, time=time, loc=loc, unit=unit)
+            times[i] = time.mjd
+            elev[i]  = src.alt.deg
+            time += dt
+
+        # Interpolate
+        evst  = interp1d(times, elev, kind='cubic')
+        times = np.linspace(times[0], times[-1], 1000) 
+        elev  = evst(times)
+
+        # Plot
+        xtime = mdates.date2num( Time(times, format='mjd').to_datetime() )
+        ax.plot( xtime, elev, label='{} @ {}'.format(sname, lname) )
+        ax.axhline(0., linestyle='--', color='black', linewidth=1)
+        ymin, ymax = ax.get_ylim()
+    
+        ax.xaxis_date()
+        date_format = mdates.DateFormatter('%H:%M')
+        ax.xaxis.set_major_formatter(date_format)
+        ax.xaxis.set_minor_formatter(date_format)
+        fig.autofmt_xdate()
+        ax.legend()
+    ax.set_xlabel('Time ({} UTC)'.format(t0))
+    ax.set_ylabel('Elevation (degrees)')
+    plt.show()
+
+
+# =================================================================================== #
+# ---------------------------------- plotSeparation --------------------------------- #
+# =================================================================================== #
+def plotSeparation(sources, time, loc, unit='deg', dt=1800):
+    """ Plot the source elevation for a day since `time`
+
+        Parameters
+        ----------
+        * **source** : str, tuple or ``astropy.coord.SkyCoord``
+            The astrophysical position/source to convert into Alt Az
+        * **time** : str, number or Time
+            The UTC time at which the conversion should be computed
+        * **loc** : str or tuple
+            The location at which the conversion should be computed
+        * **unit** : str, optional
+            If `source` is a tuple of ra/dec, unit can be either `'deg'` or `'rad'`
+        * **dt** : number, optional
+            Time interval for the elevation computation (seconds)
+    """
+    time   = getTime(time)
+    t0     = time.iso.split()[0].replace('-', '/') 
+    sname  = '{} -- {}'.format(sources[0], sources[1])
+    lname  = loc 
+    loc    = getLoc(loc)
+    
+    # Compute the elevation vs time
+    dt    = TimeDelta(dt, format='sec')
+    nvals = int((TimeDelta(1, format='jd')/dt).value)
+    times = np.zeros( nvals )
+    sep  = np.zeros( nvals )
+    for i in np.arange(nvals):
+        times[i] = time.mjd
+        sep[i]  = getSep(sources[0], sources[1], time=time, loc=loc, unit='deg').deg
+        time += dt
+
+    # Interpolate
+    evst  = interp1d(times, sep, kind='cubic')
+    times = np.linspace(times[0], times[-1], 1000) 
+    sep  = evst(times)
+
+    # Plot
+    fig, ax = plt.subplots()
+    xtime = mdates.date2num( Time(times, format='mjd').to_datetime() )
+    ax.plot( xtime, sep, label='{} @ {}'.format(sname, lname) )
+    ax.axhline(0., linestyle='--', color='black', linewidth=1)
+    ymin, ymax = ax.get_ylim()
+    ax.xaxis_date()
+    date_format = mdates.DateFormatter('%H:%M')
+    ax.xaxis.set_major_formatter(date_format)
+    ax.xaxis.set_minor_formatter(date_format)
+    fig.autofmt_xdate()
+    ax.legend()
+    ax.set_xlabel('Time ({} UTC)'.format(t0))
+    ax.set_ylabel('Separation (deg)')
     plt.show()
 
